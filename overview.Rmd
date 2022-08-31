@@ -1,0 +1,48 @@
+---
+title: "General statistical overviews of FILTER data"
+date: "`r Sys.Date()`"
+output: 
+  md_document:
+    variant: gfm 
+    toc: yes
+  html_notebook:
+    code_folding: hide
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+source(here::here("code/common_basis.R"), local = knitr::knit_global())
+```
+
+# Temporal overview
+
+```{r temporal_overview, fig.width=8, fig.height=8}
+p_year %>% 
+  inner_join(poems,by=c("p_id")) %>%
+  count(collection,year) %>%
+  mutate(measure="yearly count") %>%
+  union_all(
+    p_year %>% # 10 year rolling mean
+    distinct(year) %>% 
+    left_join(p_year %>% distinct(year),sql_on="RHS.year BETWEEN LHS.year-5 AND LHS.year+5") %>%
+    inner_join(p_year,by=c("year.y"="year")) %>%
+    inner_join(poems,by=c("p_id")) %>%
+    group_by(collection=collection,year=year.x) %>%
+    summarize(n=n()/10,.groups="drop") %>%
+    mutate(measure="10 year rolling mean")
+  ) %>%
+  filter(year>0,year<9999,collection!="literary") %>%
+  ggplot(aes(x=year,y=n,color=measure)) +
+  geom_point(data=~.x %>% filter(measure=="yearly count")) +
+  geom_line(data=~.x %>% filter(measure=="10 year rolling mean")) +
+  theme_hsci_discrete(base_family="Arial") + 
+  theme(legend.justification=c(0,1), legend.position=c(0.02, 0.98), legend.background = element_blank(), legend.key=element_blank()) + 
+  labs(color=NULL) +
+  scale_y_continuous(breaks=seq(0,20000,by=2000)) +
+  ylab("Poems") +
+  scale_x_continuous(breaks=seq(1000,2000,by=50)) +
+  xlab("Year") +
+  facet_wrap(~collection, ncol=1) +
+  ggtitle("Number of poems by year and collection")
+```
+
