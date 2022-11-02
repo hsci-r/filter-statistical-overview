@@ -7,6 +7,8 @@ library(keyring)
 library(gt)
 library(DBI)
 library(RMariaDB)
+library(sf)
+library(tmap)
 
 p <- function(number) {
   return(format(number, scientific = FALSE, big.mark = ","))
@@ -41,10 +43,11 @@ verse_poem <- tbl(con,dbplyr::in_schema("filter","verse_poem"))
 collectors <- tbl(con,dbplyr::in_schema("filter","collectors"))
 p_col <- tbl(con,dbplyr::in_schema("filter","p_col"))
 locations <- tbl(con,dbplyr::in_schema("filter","locations"))
-polygons <- tbl(con,dbplyr::in_schema("filter","polygons"))
 p_loc <- tbl(con,dbplyr::in_schema("filter","p_loc"))
 themes <- tbl(con,dbplyr::in_schema("filter","themes"))
 poem_theme <- tbl(con,dbplyr::in_schema("filter","poem_theme"))
 refs <- tbl(con,dbplyr::in_schema("filter","refs"))
 raw_meta <- tbl(con,dbplyr::in_schema("filter","raw_meta"))
 
+polygons <- st_read(con, query='SELECT name, ST_AsBinary(geometry) AS geometry FROM filter.polygons', geometry_column='geometry')
+st_crs(polygons) <- 'urn:ogc:def:crs:EPSG::3857'
