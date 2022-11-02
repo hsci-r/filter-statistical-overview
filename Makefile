@@ -3,24 +3,17 @@ knitopts = echo=F, warning=F, message=F
 default: output
 
 clean:
-	rm -rf output
+	rm -rf docs
 
 output: \
-  output/md/overview.md
+  docs/overview.html \
+  code/overview.nb.html
 
-output_html: \
-  output/html/overview.html
+docs/%.html: code/%.Rmd
+	mkdir -p docs
+	Rscript -e "rmarkdown::render(here::here('$<'),output_format='html_document',output_file=here::here('$@'))"
 
-output/md:
-	mkdir -p output/md
-
-output/md/%.md: code/%.Rmd output/md
-	Rscript -e "knitr::opts_knit\$$set(base.dir=here::here('output','md')); knitr::opts_chunk\$$set(fig.path = 'figures/'); knitr::opts_chunk\$$set($(knitopts)); knitr::knit('$<', output='$@')"
-
-output/html:
-	mkdir -p output/html
-
-output/html/%.html: output/md/%.md output/html
-	Rscript -e "markdown::markdownToHTML('$<', output='$@')"
+code/%.nb.html: code/%.Rmd
+	Rscript -e "rmarkdown::render(here::here('$<'),output_format='html_notebook',output_file=here::here('$@'))"
 
 .PHONY: clean

@@ -5,8 +5,8 @@ output:
   html_notebook:
     code_folding: hide
     toc: yes
-  md_document:
-    variant: gfm 
+  html_document:
+    code_folding: hide
     toc: yes
 ---
 
