@@ -158,21 +158,19 @@ poems %>%
   distinct(collection) %>%
   pull() %>%
   map(~
-    c(
-      tm_shape(
-        polygons %>%
-          left_join(
-            p_loc %>% 
-              inner_join(poems %>% filter(collection==.x),by=c("p_id")) %>%
-              count(loc_id) %>% 
-              inner_join(locations) %>%
-              select(name,n) %>%
-              collect()
-          )
-      ) +
-      tm_polygons(col='n', id='name', style='fisher', palette='plasma') +
-      tm_layout(title=str_c("Geography of ",.x,". Missing ",unprojected_locations %>% filter(collection==.x) %>% tally(wt=n) %>% pull() %>% p," poems.")),
-    )
+    tm_shape(
+      polygons %>%
+        left_join(
+          p_loc %>% 
+            inner_join(poems %>% filter(collection==.x),by=c("p_id")) %>%
+            count(loc_id) %>% 
+            inner_join(locations) %>%
+            select(name,n) %>%
+            collect()
+        )
+    ) +
+    tm_polygons(col='n', id='name', style='fisher', palette='plasma') +
+    tm_layout(title=str_c("Geography of ",.x,". Missing ",unprojected_locations %>% filter(collection==.x) %>% tally(wt=n) %>% pull() %>% p," poems."))
   )
 ```
 

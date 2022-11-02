@@ -16,6 +16,9 @@ p <- function(number) {
 pp <- function(percentage, accuracy = 0.01) {
   return(scales::percent(percentage, accuracy = accuracy))
 }
+is_html_output <- function() {
+  is.null(knitr::pandoc_to()) || (!str_detect(knitr::pandoc_to(), "^gfm") && knitr::is_html_output())
+}
 
 while (!exists("con")) {
   tryCatch(con <- dbConnect(
