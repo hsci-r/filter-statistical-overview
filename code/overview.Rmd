@@ -39,7 +39,7 @@ p_year %>%
   theme_hsci_discrete(base_family="Arial") + 
   theme(legend.justification=c(0,1), legend.position=c(0.02, 0.98), legend.background = element_blank(), legend.key=element_blank()) + 
   labs(color=NULL) +
-  scale_y_continuous(breaks=seq(0,20000,by=2000)) +
+  scale_y_continuous(breaks=seq(0,20000,by=2000),labels=scales::comma_format()) +
   ylab("Poems") +
   scale_x_continuous(breaks=seq(1000,2000,by=50)) +
   xlab("Year") +
@@ -57,8 +57,6 @@ p_year %>%
   tab_header(title="Abnormal years") %>%
   fmt_integer(n)
 ```
-
-
 
 # Overview of collectors
 
@@ -124,6 +122,8 @@ polygons %>%
   tm_layout(title=str_c("Geographical overview. Missing ",unprojected_locations %>% tally(wt=n) %>% pull() %>% p," poems."))
 ```
 
+## Poem locations not mapped
+
 ```{r}
 unprojected_locations %>%
   arrange(desc(n)) %>%
@@ -131,6 +131,8 @@ unprojected_locations %>%
   tab_header("Poem locations not mapped") %>%
   fmt_integer(n)
 ```
+
+## Geographical overview by collection
 
 ```{r}
 d <- p_loc %>% 
@@ -173,6 +175,8 @@ poems %>%
   )
 ```
 
+## Poem locations not mapped by collection
+
 ```{r, results="asis"}
 poems %>% 
   distinct(collection) %>%
@@ -187,6 +191,8 @@ poems %>%
       fmt_integer(n)
   )
 ```
+
+# Spatiotemporal overview
 
 ```{r}
 d <- poems %>%
@@ -210,5 +216,179 @@ polygons %>%
   tm_polygons(col='n', id='name', style='fisher', palette='plasma') +
   tm_layout(main.title="Geographical overviews by time",legend.outside.size=0.1) +
   tm_facets(by="years",ncol=4)
+```
+
+# Poem verse statistics
+
+## Line types
+
+```{r}
+d <- verses %>% 
+  left_join(verse_poem) %>% 
+  left_join(poems) %>% 
+  count(collection,type) %>% 
+  ungroup() %>%
+  arrange(collection,desc(n)) %>%
+  collect()
+```
+
+
+```{r}
+d %>% 
+  group_by(collection) %>%
+  mutate(proportion=n/sum(n)) %>%
+  gt() %>%
+  fmt_integer(n) %>%
+  fmt_percent(proportion)
+```
+
+## Verse line lengths
+
+```{r}
+d_nr_characters <- verses_cl %>%
+  mutate(nr_characters=str_length(text)) %>%
+  left_join(verse_poem) %>% 
+  left_join(poems) %>% 
+  count(collection,nr_characters) %>% 
+  ungroup() %>%
+  arrange(collection,desc(n)) %>%
+  collect()
+
+d_nr_words <- word_occ %>%
+  group_by(v_id) %>%
+  summarise(nr_words=max(pos),.groups="drop") %>%
+  left_join(verse_poem) %>%
+  left_join(poems) %>% 
+  count(collection,nr_words) %>% 
+  ungroup() %>%
+  arrange(collection,desc(n)) %>%
+  collect()
+```
+### Verse line lengths in characters
+```{r}
+d_nr_characters %>% 
+  filter(nr_characters<=60) %>%
+  ggplot(aes(x=nr_characters,y=n)) +
+  geom_col(width=1) +
+  facet_wrap(~collection,scales="free_y") +
+  theme_hsci_discrete(base_family="Arial") +
+  scale_y_continuous(labels=scales::comma_format()) +
+  xlab("Number of characters") +
+  ylab("Verses") +
+  labs(title="Number of characters in verse lines")
+```
+
+```{r}
+d_nr_characters %>% 
+  group_by(collection) %>%
+  mutate(prop=n/sum(n)) %>%
+  ungroup() %>%
+  filter(nr_characters<=60) %>%
+  ggplot(aes(x=nr_characters,y=collection,fill=collection,height=prop)) +
+  geom_density_ridges(stat='identity') +
+  theme_hsci_discrete(base_family="Arial") +
+#  scale_y_continuous(labels=scales::percent_format()) +
+  xlab("Number of characters") +
+  ylab("Verses") +
+  labs(title="Number of characters in verse lines")
+```
+
+
+### Verse lines with more than 60 characters
+
+```{r}
+d_nr_characters %>% 
+  mutate(nl=if_else(nr_characters>60,n,0L)) %>%
+  group_by(collection) %>%
+  summarise(lines=sum(nl),proportion=sum(nl)/sum(n),.groups="drop") %>%
+  arrange(desc(lines)) %>%
+  gt() %>%
+  tab_header(title="Verse lines with more than 60 characters") %>%
+  fmt_integer(lines) %>%
+  fmt_percent(proportion)
+```
+
+
+### Verse line lengths in words
+```{r}
+d_nr_words %>% 
+  filter(nr_words<=10) %>%
+  ggplot(aes(x=nr_words,y=n)) +
+  geom_col(width=1) +
+  facet_wrap(~collection,scales="free_y") +
+  scale_x_continuous(breaks=seq(0,10,by=2)) +
+  scale_y_continuous(labels=scales::comma_format()) +
+  theme_hsci_discrete(base_family="Arial") +
+  xlab("Number of words") +
+  ylab("Verses") +
+  labs(title="Number of words in verse lines")
+```
+
+```{r}
+d_nr_words %>% 
+  filter(nr_words<=10) %>%
+  uncount(n) %>%
+  ggplot(aes(x=nr_words,y=collection,fill=collection)) +
+  stat_binline(binwidth=1) +
+  theme_hsci_discrete(base_family="Arial") +
+  scale_x_continuous(breaks=seq(0,10,by=2)) +
+  xlab("Number of words") +
+  ylab("Verses") +
+#  scale_y_continuous(labels=scales::percent_format()) +
+  labs(title="Number of words in verse lines")
+```
+
+### Verse lines with more than 10 words
+
+```{r}
+d_nr_words %>% 
+  mutate(nl=if_else(nr_words>10,n,0L)) %>%
+  group_by(collection) %>%
+  summarise(lines=sum(nl),proportion=sum(nl)/sum(n),.groups="drop") %>%
+  arrange(desc(lines)) %>%
+  gt() %>%
+  tab_header(title="Verse lines with more than 10 words") %>%
+  fmt_integer(lines) %>%
+  fmt_percent(proportion)
+```
+
+```{r}
+verse_nr_words <- word_occ %>% 
+  group_by(v_id) %>%
+  summarise(nr_words=max(pos)) %>%
+  compute_a(unique_indexes=list(c("v_id","nr_words")))
+
+word_nr_characters <- words %>%
+  mutate(nr_characters=str_length(text)) %>%
+  select(w_id,nr_characters) %>%
+  compute_a(unique_indexes=list(c("w_id","nr_characters")))
+
+d <- word_occ %>%
+  left_join(word_nr_characters) %>%
+  left_join(verse_nr_words) %>%
+  left_join(verse_poem %>% select(-pos),by=c("v_id")) %>% 
+  left_join(poems) %>% 
+  count(collection,nr_words,pos,nr_characters) %>%
+  collect()
+```
+
+```{r}
+d %>%
+  group_by(collection,nr_words,pos) %>%
+  mutate(prop=n/sum(n)) %>%
+  ungroup() %>%
+  filter(nr_words>=2,nr_words<6) %>%
+  mutate(nr_words=as_factor(nr_words),pos=as_factor(pos)) %>%
+  uncount(n) %>%
+  ggplot(aes(x=nr_characters,y=nr_words,fill=nr_words)) +
+  stat_binline(binwidth=1) +
+  facet_grid(collection~pos,labeller = labeller(pos=label_both)) + 
+  xlab("Number of characters in word") +
+  ylab("Number of words in verse") +
+  labs(
+    title="Number of characters in words by their position",
+    subtitle="According to length of verse and collection"
+    ) +
+  theme_hsci_discrete(base_family="Arial")
 ```
 

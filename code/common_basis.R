@@ -9,6 +9,7 @@ library(DBI)
 library(RMariaDB)
 library(sf)
 library(tmap)
+library(ggridges)
 
 p <- function(number) {
   return(format(number, scientific = FALSE, big.mark = ","))
@@ -42,6 +43,7 @@ poems <- tbl(con,dbplyr::in_schema("filter","poems"))
 poem_stats <- tbl(con,dbplyr::in_schema("filter","poem_stats"))
 p_year <- tbl(con,dbplyr::in_schema("filter","p_year"))
 verses <- tbl(con,dbplyr::in_schema("filter","verses"))
+verses_cl <- tbl(con,dbplyr::in_schema("filter","verses_cl"))
 verse_poem <- tbl(con,dbplyr::in_schema("filter","verse_poem"))
 collectors <- tbl(con,dbplyr::in_schema("filter","collectors"))
 p_col <- tbl(con,dbplyr::in_schema("filter","p_col"))
@@ -51,6 +53,9 @@ themes <- tbl(con,dbplyr::in_schema("filter","themes"))
 poem_theme <- tbl(con,dbplyr::in_schema("filter","poem_theme"))
 refs <- tbl(con,dbplyr::in_schema("filter","refs"))
 raw_meta <- tbl(con,dbplyr::in_schema("filter","raw_meta"))
+
+words <- tbl(con,dbplyr::in_schema("filter","words"))
+word_occ <- tbl(con,dbplyr::in_schema("filter","word_occ"))
 
 polygons <- st_read(con, query='SELECT name, ST_AsBinary(geometry) AS geometry FROM filter.polygons', geometry_column='geometry')
 st_crs(polygons) <- 'urn:ogc:def:crs:EPSG::3857'
