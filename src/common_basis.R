@@ -29,6 +29,7 @@ while (!exists("con")) {
     user = if (Sys.getenv("DB_USER")!="") Sys.getenv("DB_USER") else key_get("filter_overview","DB_USER"),
     password = if (Sys.getenv("DB_PASS")!="") Sys.getenv("DB_PASS") else key_get("filter_overview","DB_PASS"),
     bigint = "integer",
+    timeout = Inf,
     load_data_local_infile = TRUE,
     autocommit = TRUE,
     reconnect = TRUE
@@ -55,6 +56,7 @@ refs <- tbl(con,dbplyr::in_schema("filter","refs"))
 raw_meta <- tbl(con,dbplyr::in_schema("filter","raw_meta"))
 
 words <- tbl(con,dbplyr::in_schema("filter","words"))
+word_freq <- tbl(con,dbplyr::in_schema("filter","word_freq"))
 word_occ <- tbl(con,dbplyr::in_schema("filter","word_occ"))
 
 polygons <- st_read(con, query='SELECT name, ST_AsBinary(geometry) AS geometry FROM filter.polygons', geometry_column='geometry')

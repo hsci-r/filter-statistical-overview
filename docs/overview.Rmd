@@ -13,6 +13,7 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(message=FALSE,dpi=72,fig.retina=2,fig.width=8)
 source(here::here("src/common_basis.R"), local = knitr::knit_global())
+tmap_mode("plot")
 ```
 
 # Temporal overview
@@ -209,7 +210,7 @@ d <- poems %>%
 ```
 
 
-```{r,fig.height=11}
+```{r,fig.height=11, results="asis"}
 polygons %>% 
   left_join(d %>% complete(name,years)) %>%
   tm_shape() +
@@ -377,7 +378,7 @@ d %>%
   group_by(collection,nr_words,pos) %>%
   mutate(prop=n/sum(n)) %>%
   ungroup() %>%
-  filter(nr_words>=2,nr_words<6) %>%
+  filter(nr_words>=2L,nr_words<=5L) %>%
   mutate(nr_words=as_factor(nr_words),pos=as_factor(pos)) %>%
   uncount(n) %>%
   ggplot(aes(x=nr_characters,y=nr_words,fill=pos)) +
@@ -398,7 +399,7 @@ d %>%
   group_by(collection,nr_words,pos) %>%
   mutate(prop=n/sum(n)) %>%
   ungroup() %>%
-  filter(nr_words>=2,nr_words<6) %>%
+  filter(nr_words>=2L,nr_words<=5L) %>%
   mutate(nr_words=as_factor(nr_words),pos=as_factor(pos)) %>%
   uncount(n) %>%
   ggplot(aes(x=nr_characters,y=pos,fill=nr_words)) +
