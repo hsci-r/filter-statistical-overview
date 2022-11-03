@@ -72,15 +72,14 @@ poems %>%
     left_join(collectors,by=c("col_id")) %>%
     select(col_id,name,n) %>%
     collect() %>%
-    mutate(col_id=fct_reorder(as_factor(col_id),n)) %>%
+    mutate(col_id=fct_reorder(str_c(col_id,"|",name),n)) %>%
     mutate(col_id=fct_lump_n(col_id,n=100,w=n)) %>%
     mutate(col_id=fct_relevel(col_id,"Other")) %>%
-    group_by(col_id,name) %>%
+    group_by(col_id) %>%
     tally(wt=n) %>% {
       ggplot(.,aes(x=col_id,y=n)) +
       geom_col() +
-      scale_x_discrete(labels=.$name) +
-      geom_text(aes(label=n),hjust='left',nudge_y = 100) +
+      geom_text(aes(label=p(n)),hjust='left',nudge_y = 100) +
       theme_hsci_discrete(base_family="Arial") +
       coord_flip() +
       labs(title=str_c("Collectors in ",.x))
