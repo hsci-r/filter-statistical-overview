@@ -115,7 +115,7 @@ unprojected_locations <- d %>%
 ```
 
 
-```{r, fig.height=11}
+```{r, fig.height=11,results="asis"}
 polygons %>%
   left_join(d) %>%
   tm_shape() +
@@ -219,9 +219,91 @@ polygons %>%
   tm_facets(by="years",ncol=4)
 ```
 
+# Poem length statistics
+
+## By collection
+
+```{r}
+poem_stats %>%
+  filter(nverses<=75) %>%
+  inner_join(poems) %>%
+  count(collection,nverses) %>%
+  ungroup() %>%
+  ggplot(aes(x=nverses,y=n)) +
+  geom_col(width=1) +
+  facet_wrap(~collection,scales="free_y") +
+  theme_hsci_discrete(base_family="Arial") +
+  scale_y_continuous(labels=scales::comma_format()) +
+  xlab("Number of verse lines") +
+  ylab("Poems") +
+  labs(title="Number of verse lines")
+```
+
+```{r}
+poem_stats %>%
+  inner_join(poems) %>%
+  count(collection,nverses) %>%
+  ungroup() %>%
+  group_by(collection) %>%
+  mutate(prop=n/sum(n)) %>%
+  ungroup() %>%
+  filter(nverses<=75) %>%
+  ggplot(aes(x=nverses,y=collection,fill=collection,height=prop)) +
+  geom_density_ridges(stat='identity') +
+  theme_hsci_discrete(base_family="Arial") +
+#  scale_y_continuous(labels=scales::percent_format()) +
+  xlab("Number of verse lines") +
+  ylab("Poems") +
+  labs(title="Number of verse lines")
+```
+
+### Poems with more than 75 verse lines
+
+```{r}
+poem_stats %>%
+  inner_join(poems) %>%
+  count(collection,nverses) %>%
+  mutate(nl=if_else(nverses>75,n,0L)) %>%
+  group_by(collection) %>%
+  summarise(lines=sum(nl),proportion=sum(nl)/sum(n),.groups="drop") %>%
+  arrange(desc(lines)) %>%
+  gt() %>%
+  tab_header(title="Poems with more than 75 verse lines") %>%
+  fmt_integer(lines) %>%
+  fmt_percent(proportion)
+```
+
+## By county
+
+```{r,fig.height=11}
+poem_stats %>% 
+  left_join(p_loc) %>% 
+  left_join(locations) %>% 
+  left_join(locations,by=c("par_id"="loc_id")) %>% 
+  mutate(name=if_else(type.x=="county",name.x,name.y)) %>%
+  count(name,nverses) %>%
+  ungroup() %>%
+  group_by(name) %>%
+  mutate(prop=n/sum(n)) %>%
+  ungroup() %>%
+  filter(nverses<=40,name!="Ahvenanmaa") %>%
+  collect() %>%
+  mutate(name=fct_reorder(name,prop,.fun=max)) %>%
+  ggplot(aes(x=nverses,y=name,height=prop)) +
+  geom_density_ridges(stat='identity') +
+  theme_hsci_continuous(base_family="Arial") +
+#  scale_y_continuous(labels=scales::percent_format()) +
+  xlab("Number of verse lines") +
+  ylab("Poems") +
+  guides(fill="none") +
+  labs(title="Number of verse lines by county")
+```
+
 # Poem verse statistics
 
-## Line types
+## By collection
+
+### Line types
 
 ```{r}
 d <- verses %>% 
@@ -243,7 +325,7 @@ d %>%
   fmt_percent(proportion)
 ```
 
-## Verse line lengths
+### Verse line lengths
 
 ```{r}
 d_nr_characters <- verses_cl %>%
@@ -265,7 +347,8 @@ d_nr_words <- word_occ %>%
   arrange(collection,desc(n)) %>%
   collect()
 ```
-### Verse line lengths in characters
+
+#### Verse line lengths in characters
 ```{r}
 d_nr_characters %>% 
   filter(nr_characters<=60) %>%
@@ -294,8 +377,7 @@ d_nr_characters %>%
   labs(title="Number of characters in verse lines")
 ```
 
-
-### Verse lines with more than 60 characters
+#### Verse lines with more than 60 characters
 
 ```{r}
 d_nr_characters %>% 
@@ -310,7 +392,7 @@ d_nr_characters %>%
 ```
 
 
-### Verse line lengths in words
+#### Verse line lengths in words
 ```{r}
 d_nr_words %>% 
   filter(nr_words<=10) %>%
@@ -339,7 +421,7 @@ d_nr_words %>%
   labs(title="Number of words in verse lines")
 ```
 
-### Verse lines with more than 10 words
+#### Verse lines with more than 10 words
 
 ```{r}
 d_nr_words %>% 
@@ -352,6 +434,94 @@ d_nr_words %>%
   fmt_integer(lines) %>%
   fmt_percent(proportion)
 ```
+
+```{r}
+verse_nr_words <- word_occ %>% 
+  group_by(v_id) %>%
+  summarise(nr_words=max(pos)) %>%
+  compute_a(unique_indexes=list(c("v_id","nr_words")))
+
+word_nr_characters <- words %>%
+  mutate(nr_characters=str_length(text)) %>%
+  select(w_id,nr_characters) %>%
+  compute_a(unique_indexes=list(c("w_id","nr_characters")))
+
+d <- word_occ %>%
+  left_join(word_nr_characters) %>%
+  left_join(verse_nr_words) %>%
+  left_join(verse_poem %>% select(-pos),by=c("v_id")) %>% 
+  left_join(poems) %>% 
+  count(collection,nr_words,pos,nr_characters) %>%
+  collect()
+```
+
+## By county
+
+### Verse line lengths
+
+```{r}
+d_nr_characters <- verses_cl %>%
+  mutate(nr_characters=str_length(text)) %>%
+  left_join(verse_poem) %>% 
+  left_join(p_loc) %>% 
+  left_join(locations) %>% 
+  left_join(locations,by=c("par_id"="loc_id")) %>% 
+  mutate(name=if_else(type.x=="county",name.x,name.y)) %>%
+  count(name,nr_characters) %>% 
+  ungroup() %>%
+  arrange(name,desc(n)) %>%
+  collect()
+
+d_nr_words <- word_occ %>%
+  group_by(v_id) %>%
+  summarise(nr_words=max(pos),.groups="drop") %>%
+  left_join(verse_poem) %>%
+  left_join(p_loc) %>% 
+  left_join(locations) %>% 
+  left_join(locations,by=c("par_id"="loc_id")) %>% 
+  mutate(name=if_else(type.x=="county",name.x,name.y)) %>%
+  count(name,nr_words) %>% 
+  ungroup() %>%
+  arrange(name,desc(n)) %>%
+  collect()
+```
+
+#### Verse line lengths in characters
+
+```{r}
+d_nr_characters %>% 
+  group_by(name) %>%
+  mutate(prop=n/sum(n)) %>%
+  ungroup() %>%
+  filter(nr_characters<=40,name!="Ahvenanmaa") %>%
+  mutate(name=fct_reorder(name,prop,.fun=max)) %>%
+  ggplot(aes(x=nr_characters,y=name,height=prop)) +
+  geom_density_ridges(stat='identity') +
+  theme_hsci_discrete(base_family="Arial") +
+#  scale_y_continuous(labels=scales::percent_format()) +
+  xlab("Number of characters") +
+  ylab("Verses") +
+  labs(title="Number of characters in verse lines")
+```
+
+#### Verse line lengths in words
+
+```{r,fig.height=11}
+d_nr_words %>% 
+  filter(nr_words<8,name!="Ahvenanmaa") %>%
+  mutate(name=fct_reorder(name,n,.fun=max)) %>%
+  uncount(n) %>%
+  ggplot(aes(x=nr_words,y=name)) +
+  stat_binline(binwidth=1,scale=0.9) +
+  theme_hsci_discrete(base_family="Arial") +
+  scale_x_continuous(breaks=seq(0,10,by=2)) +
+  xlab("Number of words") +
+  ylab("Verses") +
+#  scale_y_continuous(labels=scales::percent_format()) +
+  labs(title="Number of words in verse lines")
+```
+
+## Number of characters in words by their position
 
 ```{r}
 verse_nr_words <- word_occ %>% 
