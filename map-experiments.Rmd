@@ -1,0 +1,120 @@
+---
+title: "General statistical overviews of FILTER data"
+date: "`r Sys.Date()`"
+output: 
+  html_notebook:
+    code_folding: hide
+    toc: yes
+  html_document:
+    code_folding: hide
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message=FALSE,dpi=300,fig.retina=2,fig.width=8)
+source(here::here("src/common_basis.R"))
+tmap_mode("plot")
+```
+
+```{r}
+polygons %>% 
+  filter(map_id==1) %>%
+  left_join(p_pl %>% count(pl_id) %>% collect()) %>%
+  replace_na(list(n=0)) %>%
+  group_by(pol_id, geometry) %>%
+  summarise(n=sum(n)) %>%
+  tm_shape() +
+  tm_polygons(col='n', id='name', style='fisher', palette='plasma') +
+  tm_layout(main.title="Exp-1")
+```
+
+```{r}
+polygons %>% 
+  filter(map_id==0) %>%
+  left_join(p_pl %>% count(pl_id) %>% collect()) %>%
+  group_by(pol_id, geometry) %>%
+  summarise(n=sum(n)) %>%
+  tm_shape() +
+  tm_polygons(col='n', id='name', style='fisher', palette='plasma') +
+  tm_layout(main.title="Exp-1")
+```
+
+```{r}
+polygons %>% 
+  filter(map_id==0) %>%
+  left_join(p_pl %>% count(pl_id) %>% collect()) %>%
+  group_by(pol_id, geometry) %>%
+  summarise(n=sum(n)) %>%
+  tm_shape() +
+  tm_polygons() +
+  tm_bubbles(size = "n", col="n") +
+  tm_layout(main.title="Exp-1")
+```
+```{r}
+polygons %>% 
+  filter(map_id==1) %>%
+  left_join(p_pl %>% count(pl_id) %>% collect()) %>%
+  replace_na(list(n=0)) %>%
+  group_by(pol_id, geometry) %>%
+  summarise(n=sum(n)) %>%
+  tm_shape(point.per="largest") +
+  tm_polygons() +
+  tm_bubbles(size = "n", col="n") +
+  tm_layout(main.title="Exp-1")
+```
+
+```{r}
+d <- polygons %>% 
+  filter(map_id==0) %>%
+  left_join(p_pl %>% inner_join(poems) %>% count(collection, pl_id) %>% collect()) %>%
+  replace_na(list(n=0)) %>%
+  group_by(collection, pol_id, geometry) %>%
+  summarise(n=sum(n)) %>%
+  group_by(pol_id) %>%
+  mutate(tn=sum(n)) %>%
+  ungroup() %>%
+  mutate(pol_id=str_c("p", pol_id), collection=as_factor(collection))
+
+plot_cols <- coloropt_pal()(4)
+
+grps <- d %>% 
+#  filter(!is.na(n)) %>% 
+  complete(nesting(pol_id,tn,geometry),collection,fill=list(n=0)) %>% 
+  group_by(pol_id) 
+grobs <- grps %>% 
+  group_map(~ggplotGrob(ggplot(.x, aes(x="", y=n, fill=collection)) +
+   geom_col(width=1) +
+   scale_y_continuous(expand=c(0,0)) +
+   scale_fill_manual(values=plot_cols) +
+   theme_ps(plot.axes = FALSE))
+) %>% 
+  set_names(group_keys(grps) %>% pull())
+```
+
+
+```{r,fig.width=10,fig.height=14}
+d %>%
+  distinct(pol_id,geometry,tn) %>%
+  tm_shape(point.per="largest") +
+  tm_polygons() +
+  tm_symbols(shape="pol_id", 
+             shapes=grobs, 
+             size="tn",
+             legend.shape.show = FALSE, 
+             legend.size.is.portrait = TRUE, 
+             shapes.legend = 22) +
+  tm_add_legend(type="fill", 
+                col=plot_cols, 
+                labels=c("erab", "jr", "literary", "skvr"), 
+                title="Collection")
+
+```
+
+```{r}
+d %>%
+  tm_shape() +
+  tm_polygons() +
+  tm_bubbles(size="n") +
+  tm_facets(by="collection",ncol=4)
+```
+
