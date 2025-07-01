@@ -1,7 +1,7 @@
 ---
 title: "General statistical overviews of FILTER data"
 date: "`r Sys.Date()`"
-output: 
+output:
   html_notebook:
     code_folding: hide
     toc: yes
@@ -11,7 +11,7 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(message=FALSE,dpi=300,fig.retina=2,fig.width=8)
+knitr::opts_chunk$set(message = FALSE, dpi = 300, fig.retina = 2, fig.width = 8)
 source(here::here("src/common_basis.R"))
 tmap_mode("plot")
 ```
@@ -19,53 +19,53 @@ tmap_mode("plot")
 # Temporal overview
 
 ```{r}
-p_year %>% 
-  inner_join(poems,by=c("p_id")) %>%
-  count(collection,year) %>%
-  mutate(measure="yearly count") %>%
+p_year %>%
+  inner_join(poems, by = c("p_id")) %>%
+  count(collection, year) %>%
+  mutate(measure = "yearly count") %>%
   union_all(
     p_year %>% # 10 year rolling mean
-      distinct(year) %>% 
-      left_join(p_year %>% distinct(year),sql_on="RHS.year BETWEEN LHS.year-5 AND LHS.year+4") %>%
-      inner_join(p_year,by=c("year.y"="year")) %>%
-      inner_join(poems,by=c("p_id")) %>%
-      group_by(collection=collection,year=year.x) %>%
-      summarize(n=n()/n_distinct(year.y),.groups="drop") %>%
-      mutate(measure="10 year rolling mean")
+      distinct(year) %>%
+      left_join(p_year %>% distinct(year), sql_on = "RHS.year BETWEEN LHS.year-5 AND LHS.year+4") %>%
+      inner_join(p_year, by = c("year.y" = "year")) %>%
+      inner_join(poems, by = c("p_id")) %>%
+      group_by(collection = collection, year = year.x) %>%
+      summarize(n = n() / n_distinct(year.y), .groups = "drop") %>%
+      mutate(measure = "10 year rolling mean")
   ) %>%
-  filter(collection!="literary",!year %in% c(0,9999)) %>%
-  mutate(year=if_else(year>=1800,year,1780)) %>%
-  group_by(collection,measure,year) %>%
-  summarise(n=sum(n),.groups="drop") %>%
+  filter(collection != "literary", !year %in% c(0, 9999)) %>%
+  mutate(year = if_else(year >= 1800, year, 1780)) %>%
+  group_by(collection, measure, year) %>%
+  summarise(n = sum(n), .groups = "drop") %>%
   collect() %>%
-  complete(year,collection,measure,fill=list(n=0)) %>%
-  mutate(collection=fct_relevel(str_to_upper(collection),"ERAB","SKVR","JR")) %>%
-  group_by(collection,measure) %>%
+  complete(year, collection, measure, fill = list(n = 0)) %>%
+  mutate(collection = fct_relevel(str_to_upper(collection), "ERAB", "SKVR", "JR")) %>%
+  group_by(collection, measure) %>%
   arrange(year) %>%
-  filter(n!=0 | lag(n)!=0 | lead(n)!=0) %>%
+  filter(n != 0 | lag(n) != 0 | lead(n) != 0) %>%
   ungroup() %>%
-  mutate(youtlier=n>4600,xoutlier=year<1800) %>%
-  ggplot(aes(x=year,y=n,color=collection)) +
-  geom_point(data=~.x %>% filter(measure=="yearly count",youtlier==FALSE),size=0.5) +
-  geom_point(data=~.x %>% filter(youtlier==TRUE),aes(x=year),y=5000) +
-  geom_text_repel(data=~.x %>% filter(youtlier==TRUE),aes(x=year,label=scales::number(n)),y=5000, show.legend=FALSE) +
-  geom_point(data=~.x %>% filter(xoutlier==TRUE,measure=="yearly count"),aes(x=year,y=n)) +
-  geom_text_repel(data=~.x %>% filter(xoutlier==TRUE,measure=="yearly count"),aes(x=year,y=n,label=scales::number(n)), show.legend=FALSE) +  
-  geom_line(data=~.x %>% filter(xoutlier==FALSE,measure=="10 year rolling mean")) +
-  theme_hsci_discrete(base_family="Arial") + 
+  mutate(youtlier = n > 4600, xoutlier = year < 1800) %>%
+  ggplot(aes(x = year, y = n, color = collection)) +
+  geom_point(data = ~ .x %>% filter(measure == "yearly count", youtlier == FALSE), size = 0.5) +
+  geom_point(data = ~ .x %>% filter(youtlier == TRUE), aes(x = year), y = 5000) +
+  geom_text_repel(data = ~ .x %>% filter(youtlier == TRUE), aes(x = year, label = scales::number(n)), y = 5000, show.legend = FALSE) +
+  geom_point(data = ~ .x %>% filter(xoutlier == TRUE, measure == "yearly count"), aes(x = year, y = n)) +
+  geom_text_repel(data = ~ .x %>% filter(xoutlier == TRUE, measure == "yearly count"), aes(x = year, y = n, label = scales::number(n)), show.legend = FALSE) +
+  geom_line(data = ~ .x %>% filter(xoutlier == FALSE, measure == "10 year rolling mean")) +
+  theme_hsci_discrete(base_family = "Arial") +
   theme(
-    legend.justification=c(0,1), 
-    legend.position=c(0.02, 0.98), 
-    legend.background = element_blank(), 
-    legend.key=element_blank()
-  ) + 
-  labs(color=NULL) +
-  coord_cartesian(ylim=c(0,4600),xlim=c(1800,1970),clip="off") +
-  scale_y_continuous(breaks=seq(0,20000,by=1000),labels=scales::number) +
-#  ylab("Poems") +
+    legend.justification = c(0, 1),
+    legend.position = c(0.02, 0.98),
+    legend.background = element_blank(),
+    legend.key = element_blank()
+  ) +
+  labs(color = NULL) +
+  coord_cartesian(ylim = c(0, 4600), xlim = c(1800, 1970), clip = "off") +
+  scale_y_continuous(breaks = seq(0, 20000, by = 1000), labels = scales::number) +
+  #  ylab("Poems") +
   ylab("Runojen määrä") +
-  scale_x_continuous(breaks=seq(1000,2000,by=10)) +
-#  xlab("Year") +
+  scale_x_continuous(breaks = seq(1000, 2000, by = 10)) +
+  #  xlab("Year") +
   xlab("Vuosi") +
   ggtitle("")
 #  ggtitle("Runojen määrä vuosittain ja kokoelmittain")
@@ -73,97 +73,97 @@ p_year %>%
 ```
 
 ```{r}
-top_top_themes <- poem_theme %>% 
+top_top_themes <- poem_theme %>%
   inner_join(poems) %>%
   inner_join(themes_to_top_level_themes) %>%
   count(collection, ancestor_t_id) %>%
   group_by(collection) %>%
-  slice_max(n,n=9) %>%
-  ungroup() %>% 
-  mutate(top_theme=TRUE) %>%
-  select(ancestor_t_id,top_theme) %>%
-  compute_a(temporary=TRUE, overwrite=TRUE)
+  slice_max(n, n = 9) %>%
+  ungroup() %>%
+  mutate(top_theme = TRUE) %>%
+  select(ancestor_t_id, top_theme) %>%
+  compute_a(temporary = TRUE, overwrite = TRUE)
 ```
 
 
 ```{r}
-d <- p_year %>% 
-  inner_join(poems,by=c("p_id")) %>%
+d <- p_year %>%
+  inner_join(poems, by = c("p_id")) %>%
   inner_join(poem_theme %>%
-    inner_join(themes_to_top_level_themes %>% 
-                 inner_join(themes %>%
-                              filter(!str_detect(theme_id,"^erab_orig")) %>%
-                        select(ancestor_t_id=t_id,ancestor_theme_name=name)))) %>%
+    inner_join(themes_to_top_level_themes %>%
+      inner_join(themes %>%
+        filter(!str_detect(theme_id, "^erab_orig")) %>%
+        select(ancestor_t_id = t_id, ancestor_theme_name = name)))) %>%
   left_join(top_top_themes) %>%
   mutate(
-    ancestor_theme_name=if_else(!is.na(top_theme),ancestor_theme_name,"Muut"),
-    ancestor_t_id=if_else(!is.na(top_theme),ancestor_t_id,-1),
-    ) %>%
-  replace_na(list(ancestor_theme_name="Tuntematon", ancestor_t_id=-2)) %>%
-  distinct(ancestor_t_id,ancestor_theme_name, collection, year, p_id) %>%
-  count(ancestor_t_id,ancestor_theme_name, collection, year) %>%
-  mutate(measure="yearly count") %>%
+    ancestor_theme_name = if_else(!is.na(top_theme), ancestor_theme_name, "Muut"),
+    ancestor_t_id = if_else(!is.na(top_theme), ancestor_t_id, -1),
+  ) %>%
+  replace_na(list(ancestor_theme_name = "Tuntematon", ancestor_t_id = -2)) %>%
+  distinct(ancestor_t_id, ancestor_theme_name, collection, year, p_id) %>%
+  count(ancestor_t_id, ancestor_theme_name, collection, year) %>%
+  mutate(measure = "yearly count") %>%
   union_all(
     p_year %>% # 10 year rolling mean
-      distinct(year) %>% 
-      left_join(p_year %>% distinct(year),sql_on="RHS.year BETWEEN LHS.year-5 AND LHS.year+4") %>%
-      inner_join(p_year,by=c("year.y"="year")) %>%
-      inner_join(poems,by=c("p_id")) %>%
+      distinct(year) %>%
+      left_join(p_year %>% distinct(year), sql_on = "RHS.year BETWEEN LHS.year-5 AND LHS.year+4") %>%
+      inner_join(p_year, by = c("year.y" = "year")) %>%
+      inner_join(poems, by = c("p_id")) %>%
       inner_join(poem_theme %>%
-        inner_join(themes_to_top_level_themes %>% 
-                     inner_join(themes %>% 
-                                  filter(!str_detect(theme_id,"^erab_orig")) %>% 
-                                  select(ancestor_t_id=t_id,ancestor_theme_name=name)))) %>%
+        inner_join(themes_to_top_level_themes %>%
+          inner_join(themes %>%
+            filter(!str_detect(theme_id, "^erab_orig")) %>%
+            select(ancestor_t_id = t_id, ancestor_theme_name = name)))) %>%
       left_join(top_top_themes) %>%
       mutate(
-        ancestor_theme_name=if_else(!is.na(top_theme),ancestor_theme_name,"Muut"),
-        ancestor_t_id=if_else(!is.na(top_theme),ancestor_t_id,-1),
-        ) %>%
-      replace_na(list(ancestor_theme_name="Tuntematon", ancestor_t_id=-2)) %>%
-      distinct(ancestor_t_id,ancestor_theme_name, collection, year.x, year.y, p_id) %>%
-      group_by(ancestor_t_id,ancestor_theme_name, collection, year=year.x) %>%
-      summarize(n=n()/n_distinct(year.y),.groups="drop") %>%
-      mutate(measure="10 year rolling mean")
+        ancestor_theme_name = if_else(!is.na(top_theme), ancestor_theme_name, "Muut"),
+        ancestor_t_id = if_else(!is.na(top_theme), ancestor_t_id, -1),
+      ) %>%
+      replace_na(list(ancestor_theme_name = "Tuntematon", ancestor_t_id = -2)) %>%
+      distinct(ancestor_t_id, ancestor_theme_name, collection, year.x, year.y, p_id) %>%
+      group_by(ancestor_t_id, ancestor_theme_name, collection, year = year.x) %>%
+      summarize(n = n() / n_distinct(year.y), .groups = "drop") %>%
+      mutate(measure = "10 year rolling mean")
   ) %>%
-  filter(collection!="literary",!year %in% c(0L,9999L)) %>%
-  mutate(year=if_else(year>=1800L,year,1780L)) %>%
+  filter(collection != "literary", !year %in% c(0L, 9999L)) %>%
+  mutate(year = if_else(year >= 1800L, year, 1780L)) %>%
   group_by(ancestor_theme_name, collection, measure, year) %>%
-  summarise(n=sum(n),.groups="drop") %>%
+  summarise(n = sum(n), .groups = "drop") %>%
   collect()
 ```
 
 ```{r}
 d %>%
-  mutate(collection=fct_relevel(str_to_upper(collection),"SKVR","ERAB","JR")) %>%
-  filter(collection=="SKVR") %>%
-  complete(ancestor_theme_name, year,collection,measure,fill=list(n=0)) %>%
-  group_by(ancestor_theme_name, collection,measure) %>%
+  mutate(collection = fct_relevel(str_to_upper(collection), "SKVR", "ERAB", "JR")) %>%
+  filter(collection == "SKVR") %>%
+  complete(ancestor_theme_name, year, collection, measure, fill = list(n = 0)) %>%
+  group_by(ancestor_theme_name, collection, measure) %>%
   arrange(year) %>%
-  filter(n!=0 | lag(n)!=0 | lead(n)!=0) %>%
+  filter(n != 0 | lag(n) != 0 | lead(n) != 0) %>%
   ungroup() %>%
-  mutate(youtlier=n>1300,xoutlier=year<1800) %>%
-  ggplot(aes(x=year,y=n,color=ancestor_theme_name)) +
-#  facet_wrap(~collection) +
-  geom_point(data=~.x %>% filter(measure=="yearly count",youtlier==FALSE,xoutlier==FALSE),size=0.5) +
-  geom_point(data=~.x %>% filter(youtlier==TRUE),aes(x=year),y=1400) +
-  geom_text_repel(data=~.x %>% filter(youtlier==TRUE),aes(x=year,label=scales::number(n)),y=1400, show.legend=FALSE) +
-  geom_point(data=~.x %>% filter(xoutlier==TRUE,measure=="yearly count"),aes(x=1785,y=n)) +
-  geom_text_repel(data=~.x %>% filter(xoutlier==TRUE,measure=="yearly count"),aes(x=1785,y=n,label=scales::number(n)), show.legend=FALSE) +  
-  geom_line(data=~.x %>% filter(xoutlier==FALSE,measure=="10 year rolling mean")) +
-  theme_hsci_discrete(base_family="Arial") + 
+  mutate(youtlier = n > 1300, xoutlier = year < 1800) %>%
+  ggplot(aes(x = year, y = n, color = ancestor_theme_name)) +
+  #  facet_wrap(~collection) +
+  geom_point(data = ~ .x %>% filter(measure == "yearly count", youtlier == FALSE, xoutlier == FALSE), size = 0.5) +
+  geom_point(data = ~ .x %>% filter(youtlier == TRUE), aes(x = year), y = 1400) +
+  geom_text_repel(data = ~ .x %>% filter(youtlier == TRUE), aes(x = year, label = scales::number(n)), y = 1400, show.legend = FALSE) +
+  geom_point(data = ~ .x %>% filter(xoutlier == TRUE, measure == "yearly count"), aes(x = 1785, y = n)) +
+  geom_text_repel(data = ~ .x %>% filter(xoutlier == TRUE, measure == "yearly count"), aes(x = 1785, y = n, label = scales::number(n)), show.legend = FALSE) +
+  geom_line(data = ~ .x %>% filter(xoutlier == FALSE, measure == "10 year rolling mean")) +
+  theme_hsci_discrete(base_family = "Arial") +
   theme(
-    legend.justification=c(0,1), 
-    legend.position=c(0.02, 0.98), 
-    legend.background = element_blank(), 
-    legend.key=element_blank()
-  ) + 
-  labs(color=NULL) +
-  coord_cartesian(ylim=c(0,1300),xlim=c(1800,1940),clip="off") +
-  scale_y_continuous(breaks=seq(0,20000,by=500),labels=scales::number) +
-#  ylab("Poems") +
+    legend.justification = c(0, 1),
+    legend.position = c(0.02, 0.98),
+    legend.background = element_blank(),
+    legend.key = element_blank()
+  ) +
+  labs(color = NULL) +
+  coord_cartesian(ylim = c(0, 1300), xlim = c(1800, 1940), clip = "off") +
+  scale_y_continuous(breaks = seq(0, 20000, by = 500), labels = scales::number) +
+  #  ylab("Poems") +
   ylab("Runojen määrä") +
-  scale_x_continuous(breaks=seq(1000,2000,by=10)) +
-#  xlab("Year") +
+  scale_x_continuous(breaks = seq(1000, 2000, by = 10)) +
+  #  xlab("Year") +
   xlab("Vuosi") +
   ggtitle("")
 #  ggtitle("Runojen määrä vuosittain ja kokoelmittain")
@@ -172,15 +172,16 @@ d %>%
 
 ```{r}
 d %>%
-  mutate(collection=fct_relevel(str_to_upper(collection),"SKVR","ERAB")) %>%
-  filter(collection=="ERAB") %>%
-  complete(ancestor_theme_name, year,collection,measure,fill=list(n=0)) %>%
-  group_by(ancestor_theme_name, collection,measure) %>%
+  mutate(collection = fct_relevel(str_to_upper(collection), "SKVR", "ERAB")) %>%
+  filter(collection == "ERAB") %>%
+  complete(ancestor_theme_name, year, collection, measure, fill = list(n = 0)) %>%
+  group_by(ancestor_theme_name, collection, measure) %>%
   arrange(year) %>%
-  filter(n!=0 | lag(n)!=0 | lead(n)!=0) %>%
+  filter(n != 0 | lag(n) != 0 | lead(n) != 0) %>%
   ungroup() %>%
-  mutate(youtlier=n>820,xoutlier=year<1800) %>%
-  mutate(ancestor_theme_name=case_match(ancestor_theme_name,
+  mutate(youtlier = n > 820, xoutlier = year < 1800) %>%
+  mutate(ancestor_theme_name = case_match(
+    ancestor_theme_name,
     "Laulud noorrahva elust" ~ "Laulut nuorison elämästä (Laulud noorrahva elust)",
     "Muut" ~ "Muut (sisältää 17 luokkaa)",
     "Laulud meelelahutamiseks" ~ "Viihdytyslaulut (Laulud meelelahutamiseks)",
@@ -193,31 +194,31 @@ d %>%
     "Laulud abielust" ~ "Laulut avioelämästä (Laulud abielust)",
     "Kalendrilaulud" ~ "Kalendaarilaulut (Kalendrilaulud)"
   )) %>%
-  mutate(ancestor_theme_name=fct_reorder(ancestor_theme_name,n,.fun=sum,.desc=TRUE)) %>%
-  mutate(ancestor_theme_name=fct_relevel(ancestor_theme_name, "Muut (sisältää 17 luokkaa)", after=Inf)) %>%
-  ggplot(aes(x=year,y=n,color=ancestor_theme_name)) +
-#  facet_wrap(~collection) +
-  geom_point(data=~.x %>% filter(measure=="yearly count",youtlier==FALSE,xoutlier==FALSE),size=0.5) +
-  geom_point(data=~.x %>% filter(youtlier==TRUE),aes(x=year),y=900) +
-  geom_text_repel(data=~.x %>% filter(youtlier==TRUE),aes(x=year,label=scales::number(n)),y=900, show.legend=FALSE) +
-  geom_point(data=~.x %>% filter(xoutlier==TRUE,measure=="yearly count"),aes(x=1785,y=n)) +
-  geom_text_repel(data=~.x %>% filter(xoutlier==TRUE,measure=="yearly count"),aes(x=1785,y=n,label=scales::number(n)), show.legend=FALSE) +  
-  geom_line(data=~.x %>% filter(xoutlier==FALSE,measure=="10 year rolling mean")) +
-  theme_hsci_discrete(base_family="Arial") + 
+  mutate(ancestor_theme_name = fct_reorder(ancestor_theme_name, n, .fun = sum, .desc = TRUE)) %>%
+  mutate(ancestor_theme_name = fct_relevel(ancestor_theme_name, "Muut (sisältää 17 luokkaa)", after = Inf)) %>%
+  ggplot(aes(x = year, y = n, color = ancestor_theme_name)) +
+  #  facet_wrap(~collection) +
+  geom_point(data = ~ .x %>% filter(measure == "yearly count", youtlier == FALSE, xoutlier == FALSE), size = 0.5) +
+  geom_point(data = ~ .x %>% filter(youtlier == TRUE), aes(x = year), y = 900) +
+  geom_text_repel(data = ~ .x %>% filter(youtlier == TRUE), aes(x = year, label = scales::number(n)), y = 900, show.legend = FALSE) +
+  geom_point(data = ~ .x %>% filter(xoutlier == TRUE, measure == "yearly count"), aes(x = 1785, y = n)) +
+  geom_text_repel(data = ~ .x %>% filter(xoutlier == TRUE, measure == "yearly count"), aes(x = 1785, y = n, label = scales::number(n)), show.legend = FALSE) +
+  geom_line(data = ~ .x %>% filter(xoutlier == FALSE, measure == "10 year rolling mean")) +
+  theme_hsci_discrete(base_family = "Arial") +
   theme(
-    legend.justification=c(0,1), 
-    legend.position=c(0.02, 0.98), 
-    legend.background = element_blank(), 
-    legend.key=element_blank()
-  ) + 
-  labs(color=NULL) +
-  coord_cartesian(ylim=c(0,820),xlim=c(1820,1950),clip="off") +
-  scale_y_continuous(breaks=seq(0,20000,by=200),labels=scales::number) +
-#  ylab("Poems") +
+    legend.justification = c(0, 1),
+    legend.position = c(0.02, 0.98),
+    legend.background = element_blank(),
+    legend.key = element_blank()
+  ) +
+  labs(color = NULL) +
+  coord_cartesian(ylim = c(0, 820), xlim = c(1820, 1950), clip = "off") +
+  scale_y_continuous(breaks = seq(0, 20000, by = 200), labels = scales::number) +
+  #  ylab("Poems") +
   ylab("Runojen määrä") +
-#  guides(color=guide_legend(nrow=2)) +
-  scale_x_continuous(breaks=seq(1000,2000,by=10)) +
-#  xlab("Year") +
+  #  guides(color=guide_legend(nrow=2)) +
+  scale_x_continuous(breaks = seq(1000, 2000, by = 10)) +
+  #  xlab("Year") +
   xlab("Vuosi") +
   ggtitle("")
 #  ggtitle("Runojen määrä vuosittain ja kokoelmittain")
@@ -226,36 +227,36 @@ d %>%
 
 ```{r}
 d %>%
-  mutate(collection=fct_relevel(str_to_upper(collection),"SKVR","ERAB","JR")) %>%
-  filter(collection=="JR") %>%
-  complete(ancestor_theme_name, year,collection,measure,fill=list(n=0)) %>%
-  group_by(ancestor_theme_name, collection,measure) %>%
+  mutate(collection = fct_relevel(str_to_upper(collection), "SKVR", "ERAB", "JR")) %>%
+  filter(collection == "JR") %>%
+  complete(ancestor_theme_name, year, collection, measure, fill = list(n = 0)) %>%
+  group_by(ancestor_theme_name, collection, measure) %>%
   arrange(year) %>%
-  filter(n!=0 | lag(n)!=0 | lead(n)!=0) %>%
+  filter(n != 0 | lag(n) != 0 | lead(n) != 0) %>%
   ungroup() %>%
-  mutate(youtlier=n>6500,xoutlier=year<1800) %>%
-  ggplot(aes(x=year,y=n,color=ancestor_theme_name)) +
-#  facet_wrap(~collection) +
-  geom_point(data=~.x %>% filter(measure=="yearly count",youtlier==FALSE),size=0.5) +
-  geom_point(data=~.x %>% filter(youtlier==TRUE),aes(x=year),y=7200) +
-  geom_text_repel(data=~.x %>% filter(youtlier==TRUE),aes(x=year,label=scales::number(n)),y=7200, show.legend=FALSE) +
-  geom_point(data=~.x %>% filter(xoutlier==TRUE,measure=="yearly count"),aes(x=year,y=n)) +
-  geom_text_repel(data=~.x %>% filter(xoutlier==TRUE,measure=="yearly count"),aes(x=year,y=n,label=scales::number(n)), show.legend=FALSE) +  
-  geom_line(data=~.x %>% filter(xoutlier==FALSE,measure=="10 year rolling mean")) +
-  theme_hsci_discrete(base_family="Arial") + 
+  mutate(youtlier = n > 6500, xoutlier = year < 1800) %>%
+  ggplot(aes(x = year, y = n, color = ancestor_theme_name)) +
+  #  facet_wrap(~collection) +
+  geom_point(data = ~ .x %>% filter(measure == "yearly count", youtlier == FALSE), size = 0.5) +
+  geom_point(data = ~ .x %>% filter(youtlier == TRUE), aes(x = year), y = 7200) +
+  geom_text_repel(data = ~ .x %>% filter(youtlier == TRUE), aes(x = year, label = scales::number(n)), y = 7200, show.legend = FALSE) +
+  geom_point(data = ~ .x %>% filter(xoutlier == TRUE, measure == "yearly count"), aes(x = year, y = n)) +
+  geom_text_repel(data = ~ .x %>% filter(xoutlier == TRUE, measure == "yearly count"), aes(x = year, y = n, label = scales::number(n)), show.legend = FALSE) +
+  geom_line(data = ~ .x %>% filter(xoutlier == FALSE, measure == "10 year rolling mean")) +
+  theme_hsci_discrete(base_family = "Arial") +
   theme(
-    legend.justification=c(0,1), 
-    legend.position=c(0.02, 0.98), 
-    legend.background = element_blank(), 
-    legend.key=element_blank()
-  ) + 
-  labs(color=NULL) +
-  coord_cartesian(ylim=c(0,6500),xlim=c(1800,1960),clip="off") +
-  scale_y_continuous(breaks=seq(0,20000,by=1000),labels=scales::number) +
-#  ylab("Poems") +
+    legend.justification = c(0, 1),
+    legend.position = c(0.02, 0.98),
+    legend.background = element_blank(),
+    legend.key = element_blank()
+  ) +
+  labs(color = NULL) +
+  coord_cartesian(ylim = c(0, 6500), xlim = c(1800, 1960), clip = "off") +
+  scale_y_continuous(breaks = seq(0, 20000, by = 1000), labels = scales::number) +
+  #  ylab("Poems") +
   ylab("Runojen määrä") +
-  scale_x_continuous(breaks=seq(1000,2000,by=10)) +
-#  xlab("Year") +
+  scale_x_continuous(breaks = seq(1000, 2000, by = 10)) +
+  #  xlab("Year") +
   xlab("Vuosi") +
   ggtitle("")
 #  ggtitle("Runojen määrä vuosittain ja kokoelmittain")
@@ -264,49 +265,49 @@ d %>%
 
 
 ```{r}
-p_year %>% 
-  filter(year %in% c(0,9999)) %>% 
-  left_join(poems) %>% 
-  count(collection,year) %>%
+p_year %>%
+  filter(year %in% c(0, 9999)) %>%
+  left_join(poems) %>%
+  count(collection, year) %>%
   ungroup() %>%
   gt() %>%
-  tab_header(title="Abnormal years") %>%
+  tab_header(title = "Abnormal years") %>%
   fmt_integer(n)
 ```
 
 # Overview of collectors
 
 ```{r collectors_overview, fig.width=8, fig.height=11}
-poems %>% 
+poems %>%
   distinct(collection) %>%
   pull() %>%
-  map(~p_col %>% 
-    inner_join(poems %>% filter(collection==.x),by=c("p_id")) %>%
+  map(~ p_col %>%
+    inner_join(poems %>% filter(collection == .x), by = c("p_id")) %>%
     count(col_id) %>%
-    left_join(collectors,by=c("col_id")) %>%
-    select(col_id,name,n) %>%
+    left_join(collectors, by = c("col_id")) %>%
+    select(col_id, name, n) %>%
     collect() %>%
-    mutate(col_id=fct_reorder(str_c(col_id,"|",name),n)) %>%
-    mutate(col_id=fct_lump_n(col_id,n=100,w=n)) %>%
-    mutate(col_id=fct_relevel(col_id,"Other")) %>%
+    mutate(col_id = fct_reorder(str_c(col_id, "|", name), n)) %>%
+    mutate(col_id = fct_lump_n(col_id, n = 100, w = n)) %>%
+    mutate(col_id = fct_relevel(col_id, "Other")) %>%
     group_by(col_id) %>%
-    tally(wt=n) %>% {
-      ggplot(.,aes(x=col_id,y=n)) +
-      geom_col() +
-      geom_text(aes(label=p(n)),hjust='left',nudge_y = 100) +
-      theme_hsci_discrete(base_family="Arial") +
-      coord_flip() +
-      labs(title=str_c("Collectors in ",.x))
-    }
-  )
+    tally(wt = n) %>%
+    {
+      ggplot(., aes(x = col_id, y = n)) +
+        geom_col() +
+        geom_text(aes(label = p(n)), hjust = "left", nudge_y = 100) +
+        theme_hsci_discrete(base_family = "Arial") +
+        coord_flip() +
+        labs(title = str_c("Collectors in ", .x))
+    })
 ```
 
 ```{r}
-p_col %>% 
+p_col %>%
   anti_join(collectors) %>%
   count(col_id) %>%
   gt() %>%
-  tab_header(title="Collectors without a name") %>%
+  tab_header(title = "Collectors without a name") %>%
   fmt_integer(n)
 ```
 
@@ -314,73 +315,72 @@ p_col %>%
 p_col %>%
   inner_join(collectors) %>%
   inner_join(poems) %>%
-  filter(collection!="literary") %>%
-  mutate(collection=str_to_upper(collection)) %>%
-  count(collection,col_id,name) %>%
+  filter(collection != "literary") %>%
+  mutate(collection = str_to_upper(collection)) %>%
+  count(collection, col_id, name) %>%
   group_by(collection) %>%
-  slice_max(order_by=n,n=10) %>%
+  slice_max(order_by = n, n = 10) %>%
   ungroup() %>%
   select(-col_id) %>%
   gt(groupname_col = "collection", rowname_col = "name") %>%
-  row_group_order(c("ERAB","SKVR","JR")) %>%
-  fmt_integer(n,sep_mark=" ")
+  row_group_order(c("ERAB", "SKVR", "JR")) %>%
+  fmt_integer(n, sep_mark = " ")
 ```
 
 ```{r,fig.height=3}
 p_col %>%
   inner_join(collectors) %>%
   inner_join(poems) %>%
-  filter(collection!="literary") %>%
-  mutate(collection=str_to_upper(collection)) %>%
-  count(collection,col_id,name) %>%
+  filter(collection != "literary") %>%
+  mutate(collection = str_to_upper(collection)) %>%
+  count(collection, col_id, name) %>%
   group_by(collection) %>%
-  slice_max(order_by=n,n=10) %>%
+  slice_max(order_by = n, n = 10) %>%
   ungroup() %>%
   inner_join(p_col) %>%
   inner_join(poem_theme) %>%
   inner_join(themes_to_top_level_themes) %>%
-  count(collection, col_id, t_id=ancestor_t_id) %>%
-  inner_join(themes %>% rename(theme_name=name)) %>%
+  count(collection, col_id, t_id = ancestor_t_id) %>%
+  inner_join(themes %>% rename(theme_name = name)) %>%
   inner_join(collectors) %>%
-  filter(collection=="SKVR") %>%
-  collect() %>% 
-#  group_by(collection) %>%
-#  mutate(theme_name=fct_lump_n(theme_name, n, n=5, other_level="Muut")) %>%
-#  ungroup() %>%
+  filter(collection == "SKVR") %>%
+  collect() %>%
+  #  group_by(collection) %>%
+  #  mutate(theme_name=fct_lump_n(theme_name, n, n=5, other_level="Muut")) %>%
+  #  ungroup() %>%
   group_by(col_id) %>%
-  mutate(tn=sum(n)) %>%
+  mutate(tn = sum(n)) %>%
   ungroup() %>%
-  mutate(name=fct_reorder(name,tn)) %>%
-  ggplot(aes(x=name,fill=theme_name,y=n)) +
-#  facet_wrap(~collection,scales="free",ncol=1) +
+  mutate(name = fct_reorder(name, tn)) %>%
+  ggplot(aes(x = name, fill = theme_name, y = n)) +
+  #  facet_wrap(~collection,scales="free",ncol=1) +
   geom_col() +
   theme_hsci_discrete() +
   coord_flip() +
-  scale_y_continuous(labels=scales::number) +
-  labs(fill="Päätyyppi") +
+  scale_y_continuous(labels = scales::number) +
+  labs(fill = "Päätyyppi") +
   xlab("Kerääjä") +
   ylab("Tyyppimerkintöjä")
-
 ```
 
 
 # Geographical overview
 
 ```{r}
-d <- p_loc %>% 
-  count(loc_id) %>% 
+d <- p_loc %>%
+  count(loc_id) %>%
   inner_join(locations) %>%
-  select(name,n) %>%
+  select(name, n) %>%
   collect()
 
-poems_without_location <- poems %>% 
-  anti_join(p_loc) %>% 
-  count() %>% 
+poems_without_location <- poems %>%
+  anti_join(p_loc) %>%
+  count() %>%
   pull()
 
 unprojected_locations <- d %>%
   anti_join(polygons) %>%
-  add_row(name=NA,n=poems_without_location)
+  add_row(name = NA, n = poems_without_location)
 ```
 
 
@@ -388,8 +388,8 @@ unprojected_locations <- d %>%
 polygons %>%
   left_join(d) %>%
   tm_shape() +
-  tm_polygons(col='n', id='name', style='fisher', palette='plasma') +
-  tm_layout(title=str_c("Geographical overview. Missing ",unprojected_locations %>% tally(wt=n) %>% pull() %>% p," poems."))
+  tm_polygons(col = "n", id = "name", style = "fisher", palette = "plasma") +
+  tm_layout(title = str_c("Geographical overview. Missing ", unprojected_locations %>% tally(wt = n) %>% pull() %>% p(), " poems."))
 ```
 
 ## Poem locations not mapped
@@ -405,19 +405,19 @@ unprojected_locations %>%
 ## Geographical overview by collection
 
 ```{r}
-d <- p_loc %>% 
+d <- p_loc %>%
   left_join(poems) %>%
-  count(collection,loc_id) %>% 
+  count(collection, loc_id) %>%
   ungroup() %>%
   inner_join(locations) %>%
-  select(collection,name,n) %>%
+  select(collection, name, n) %>%
   collect()
 
-poems_without_location <- poems %>% 
-  anti_join(p_loc) %>% 
-  count(collection) %>% 
+poems_without_location <- poems %>%
+  anti_join(p_loc) %>%
+  count(collection) %>%
   collect() %>%
-  mutate(name=NA_character_)
+  mutate(name = NA_character_)
 
 unprojected_locations <- d %>%
   anti_join(polygons) %>%
@@ -425,52 +425,50 @@ unprojected_locations <- d %>%
 ```
 
 ```{r, fig.height=11}
-poems %>% 
+poems %>%
   distinct(collection) %>%
   pull() %>%
   map(~
     tm_shape(
       polygons %>%
         left_join(
-          p_loc %>% 
-            inner_join(poems %>% filter(collection==.x),by=c("p_id")) %>%
-            count(loc_id) %>% 
+          p_loc %>%
+            inner_join(poems %>% filter(collection == .x), by = c("p_id")) %>%
+            count(loc_id) %>%
             inner_join(locations) %>%
-            select(name,n) %>%
+            select(name, n) %>%
             collect()
         )
     ) +
-    tm_polygons(col='n', id='name', style='fisher', palette='plasma') +
-    tm_layout(title=str_c("Geography of ",.x,". Missing ",unprojected_locations %>% filter(collection==.x) %>% tally(wt=n) %>% pull() %>% p," poems."))
-  )
+      tm_polygons(col = "n", id = "name", style = "fisher", palette = "plasma") +
+      tm_layout(title = str_c("Geography of ", .x, ". Missing ", unprojected_locations %>% filter(collection == .x) %>% tally(wt = n) %>% pull() %>% p(), " poems.")))
 ```
 
 ## Poem locations not mapped by collection
 
 ```{r, results="asis"}
-poems %>% 
+poems %>%
   distinct(collection) %>%
   pull() %>%
   map(~
     unprojected_locations %>%
-      filter(collection==.x) %>%
+      filter(collection == .x) %>%
       arrange(desc(n)) %>%
       select(-collection) %>%
       gt() %>%
-      tab_header(str_c("Poem locations not mapped in ",.x)) %>%
-      fmt_integer(n)
-  )
+      tab_header(str_c("Poem locations not mapped in ", .x)) %>%
+      fmt_integer(n))
 ```
 
 # Informants
 
 ```{r}
-raw_meta %>% 
-  filter(field=="INF") %>%
-  mutate(value_c=str_replace_all(value,"^\\s*[A-Za-zÅÄÖåäö][a-zåäö][a-zåäö]+\\.","")) %>% 
-  mutate(name=str_replace_all(value_c,"\\s*\"*([A-Za-zÅÄÖåäö]?[a-zåäö]?[a-zåäö]?\\.?[^;.,]+)(.|\\n)*","\\1")) %>% 
-  group_by(name) %>% 
-  summarise(origs=str_flatten(sql("distinct value"),collapse="|"),n=n(),.groups="drop") %>% 
+raw_meta %>%
+  filter(field == "INF") %>%
+  mutate(value_c = str_replace_all(value, "^\\s*[A-Za-zÅÄÖåäö][a-zåäö][a-zåäö]+\\.", "")) %>%
+  mutate(name = str_replace_all(value_c, "\\s*\"*([A-Za-zÅÄÖåäö]?[a-zåäö]?[a-zåäö]?\\.?[^;.,]+)(.|\\n)*", "\\1")) %>%
+  group_by(name) %>%
+  summarise(origs = str_flatten(sql("distinct value"), collapse = "|"), n = n(), .groups = "drop") %>%
   collect()
 ```
 
@@ -478,26 +476,27 @@ raw_meta %>%
 # Poem types
 
 ```{r}
-poems %>% 
-  filter(collection!="literary") %>%
-  left_join(poem_theme %>% filter(is_minor==0) %>% inner_join(themes %>% mutate(theme_type=if_else(str_detect(theme_id,"^erab_orig"),"Non-unified","Unified")))) %>% 
-  group_by(collection,p_id) %>%
-  summarise(theme_type=case_when(
-    any(theme_type=="Unified") ~ "Systematisoituja", 
-    any(theme_type=="Non-unified") ~ "Vain ei-systematisoituja", 
-    T ~ "Ei annotointeja"), .groups="drop") %>%
-  count(collection,theme_type) %>%
+poems %>%
+  filter(collection != "literary") %>%
+  left_join(poem_theme %>% filter(is_minor == 0) %>% inner_join(themes %>% mutate(theme_type = if_else(str_detect(theme_id, "^erab_orig"), "Non-unified", "Unified")))) %>%
+  group_by(collection, p_id) %>%
+  summarise(theme_type = case_when(
+    any(theme_type == "Unified") ~ "Systematisoituja",
+    any(theme_type == "Non-unified") ~ "Vain ei-systematisoituja",
+    T ~ "Ei annotointeja"
+  ), .groups = "drop") %>%
+  count(collection, theme_type) %>%
   collect() %>%
-  mutate(collection=fct_rev(fct_relevel(str_to_upper(collection),"ERAB","SKVR","JR")),theme_type=fct_rev(fct_relevel(theme_type,"Systematisoituja","Vain ei-systematisoituja","Ei annotointeja"))) %>%
-  ggplot(aes(x=collection,y=n,fill=theme_type)) + 
-  geom_col() + 
-  theme_hsci_discrete() + 
+  mutate(collection = fct_rev(fct_relevel(str_to_upper(collection), "ERAB", "SKVR", "JR")), theme_type = fct_rev(fct_relevel(theme_type, "Systematisoituja", "Vain ei-systematisoituja", "Ei annotointeja"))) %>%
+  ggplot(aes(x = collection, y = n, fill = theme_type)) +
+  geom_col() +
+  theme_hsci_discrete() +
   xlab("Kokoelma") +
   ylab("Runoja") +
-  labs(fill="Runotyyppiannotaatiot") +
-  theme(legend.position="bottom") +
+  labs(fill = "Runotyyppiannotaatiot") +
+  theme(legend.position = "bottom") +
   guides(fill = guide_legend(reverse = TRUE)) +
-  scale_y_continuous(labels=scales::number) +
+  scale_y_continuous(labels = scales::number) +
   coord_flip()
 ```
 
@@ -506,26 +505,26 @@ poems %>%
 
 ```{r}
 d <- poems %>%
-  left_join(p_year %>% mutate(year=if_else(year %in% c(0L,9999L),NA,year))) %>% 
+  left_join(p_year %>% mutate(year = if_else(year %in% c(0L, 9999L), NA, year))) %>%
   collect() %>%
-  mutate(year_ntile=ntile(year,11)) %>%
+  mutate(year_ntile = ntile(year, 11)) %>%
   group_by(year_ntile) %>%
-  mutate(years=str_c(min(year),"-",max(year))) %>%
+  mutate(years = str_c(min(year), "-", max(year))) %>%
   ungroup() %>%
-  left_join(p_loc %>% collect()) %>% 
-  count(years,loc_id) %>% 
+  left_join(p_loc %>% collect()) %>%
+  count(years, loc_id) %>%
   ungroup() %>%
-  left_join(locations %>% select(loc_id,name) %>% collect())
+  left_join(locations %>% select(loc_id, name) %>% collect())
 ```
 
 
 ```{r,fig.height=11, results="asis"}
-polygons %>% 
-  left_join(d %>% complete(name,years)) %>%
+polygons %>%
+  left_join(d %>% complete(name, years)) %>%
   tm_shape() +
-  tm_polygons(col='n', id='name', style='fisher', palette='plasma') +
-  tm_layout(main.title="Geographical overviews by time",legend.outside.size=0.1) +
-  tm_facets(by="years",ncol=4)
+  tm_polygons(col = "n", id = "name", style = "fisher", palette = "plasma") +
+  tm_layout(main.title = "Geographical overviews by time", legend.outside.size = 0.1) +
+  tm_facets(by = "years", ncol = 4)
 ```
 
 # Poem length statistics
@@ -534,36 +533,36 @@ polygons %>%
 
 ```{r}
 poem_stats %>%
-  filter(nverses<=75) %>%
+  filter(nverses <= 75) %>%
   inner_join(poems) %>%
-  count(collection,nverses) %>%
+  count(collection, nverses) %>%
   ungroup() %>%
-  ggplot(aes(x=nverses,y=n)) +
-  geom_col(width=1) +
-  facet_wrap(~collection,scales="free_y") +
-  theme_hsci_discrete(base_family="Arial") +
-  scale_y_continuous(labels=scales::comma_format()) +
+  ggplot(aes(x = nverses, y = n)) +
+  geom_col(width = 1) +
+  facet_wrap(~collection, scales = "free_y") +
+  theme_hsci_discrete(base_family = "Arial") +
+  scale_y_continuous(labels = scales::comma_format()) +
   xlab("Number of verse lines") +
   ylab("Poems") +
-  labs(title="Number of verse lines")
+  labs(title = "Number of verse lines")
 ```
 
 ```{r}
 poem_stats %>%
   inner_join(poems) %>%
-  count(collection,nverses) %>%
+  count(collection, nverses) %>%
   ungroup() %>%
   group_by(collection) %>%
-  mutate(prop=n/sum(n)) %>%
+  mutate(prop = n / sum(n)) %>%
   ungroup() %>%
-  filter(nverses<=75) %>%
-  ggplot(aes(x=nverses,y=collection,fill=collection,height=prop)) +
-  geom_density_ridges(stat='identity') +
-  theme_hsci_discrete(base_family="Arial") +
-#  scale_y_continuous(labels=scales::percent_format()) +
+  filter(nverses <= 75) %>%
+  ggplot(aes(x = nverses, y = collection, fill = collection, height = prop)) +
+  geom_density_ridges(stat = "identity") +
+  theme_hsci_discrete(base_family = "Arial") +
+  #  scale_y_continuous(labels=scales::percent_format()) +
   xlab("Number of verse lines") +
   ylab("Poems") +
-  labs(title="Number of verse lines")
+  labs(title = "Number of verse lines")
 ```
 
 ### Poems with more than 75 verse lines
@@ -571,13 +570,13 @@ poem_stats %>%
 ```{r}
 poem_stats %>%
   inner_join(poems) %>%
-  count(collection,nverses) %>%
-  mutate(nl=if_else(nverses>75,n,0L)) %>%
+  count(collection, nverses) %>%
+  mutate(nl = if_else(nverses > 75, n, 0L)) %>%
   group_by(collection) %>%
-  summarise(lines=sum(nl),proportion=sum(nl)/sum(n),.groups="drop") %>%
+  summarise(lines = sum(nl), proportion = sum(nl) / sum(n), .groups = "drop") %>%
   arrange(desc(lines)) %>%
   gt() %>%
-  tab_header(title="Poems with more than 75 verse lines") %>%
+  tab_header(title = "Poems with more than 75 verse lines") %>%
   fmt_integer(lines) %>%
   fmt_percent(proportion)
 ```
@@ -585,27 +584,27 @@ poem_stats %>%
 ## By county
 
 ```{r,fig.height=11}
-poem_stats %>% 
-  left_join(p_loc) %>% 
-  left_join(locations) %>% 
-  left_join(locations,by=c("par_id"="loc_id")) %>% 
-  mutate(name=if_else(type.x=="county",name.x,name.y)) %>%
-  count(name,nverses) %>%
+poem_stats %>%
+  left_join(p_loc) %>%
+  left_join(locations) %>%
+  left_join(locations, by = c("par_id" = "loc_id")) %>%
+  mutate(name = if_else(type.x == "county", name.x, name.y)) %>%
+  count(name, nverses) %>%
   ungroup() %>%
   group_by(name) %>%
-  mutate(prop=n/sum(n)) %>%
+  mutate(prop = n / sum(n)) %>%
   ungroup() %>%
-  filter(nverses<=40,name!="Ahvenanmaa") %>%
+  filter(nverses <= 40, name != "Ahvenanmaa") %>%
   collect() %>%
-  mutate(name=fct_reorder(name,prop,.fun=max)) %>%
-  ggplot(aes(x=nverses,y=name,height=prop)) +
-  geom_density_ridges(stat='identity') +
-  theme_hsci_continuous(base_family="Arial") +
-#  scale_y_continuous(labels=scales::percent_format()) +
+  mutate(name = fct_reorder(name, prop, .fun = max)) %>%
+  ggplot(aes(x = nverses, y = name, height = prop)) +
+  geom_density_ridges(stat = "identity") +
+  theme_hsci_continuous(base_family = "Arial") +
+  #  scale_y_continuous(labels=scales::percent_format()) +
   xlab("Number of verse lines") +
   ylab("Poems") +
-  guides(fill="none") +
-  labs(title="Number of verse lines by county")
+  guides(fill = "none") +
+  labs(title = "Number of verse lines by county")
 ```
 
 # Poem verse statistics
@@ -615,20 +614,20 @@ poem_stats %>%
 ### Line types
 
 ```{r}
-d <- verses %>% 
-  left_join(verse_poem) %>% 
-  left_join(poems) %>% 
-  count(collection,type) %>% 
+d <- verses %>%
+  left_join(verse_poem) %>%
+  left_join(poems) %>%
+  count(collection, type) %>%
   ungroup() %>%
-  arrange(collection,desc(n)) %>%
+  arrange(collection, desc(n)) %>%
   collect()
 ```
 
 
 ```{r}
-d %>% 
+d %>%
   group_by(collection) %>%
-  mutate(proportion=n/sum(n)) %>%
+  mutate(proportion = n / sum(n)) %>%
   gt() %>%
   fmt_integer(n) %>%
   fmt_percent(proportion)
@@ -638,64 +637,64 @@ d %>%
 
 ```{r}
 d_nr_characters <- verses_cl %>%
-  mutate(nr_characters=str_length(text)) %>%
-  left_join(verse_poem) %>% 
-  left_join(poems) %>% 
-  count(collection,nr_characters) %>% 
+  mutate(nr_characters = str_length(text)) %>%
+  left_join(verse_poem) %>%
+  left_join(poems) %>%
+  count(collection, nr_characters) %>%
   ungroup() %>%
-  arrange(collection,desc(n)) %>%
+  arrange(collection, desc(n)) %>%
   collect()
 
 d_nr_words <- word_occ %>%
   group_by(v_id) %>%
-  summarise(nr_words=max(pos),.groups="drop") %>%
+  summarise(nr_words = max(pos), .groups = "drop") %>%
   left_join(verse_poem) %>%
-  left_join(poems) %>% 
-  count(collection,nr_words) %>% 
+  left_join(poems) %>%
+  count(collection, nr_words) %>%
   ungroup() %>%
-  arrange(collection,desc(n)) %>%
+  arrange(collection, desc(n)) %>%
   collect()
 ```
 
 #### Verse line lengths in characters
 ```{r}
-d_nr_characters %>% 
-  filter(nr_characters<=60) %>%
-  ggplot(aes(x=nr_characters,y=n)) +
-  geom_col(width=1) +
-  facet_wrap(~collection,scales="free_y") +
-  theme_hsci_discrete(base_family="Arial") +
-  scale_y_continuous(labels=scales::comma_format()) +
+d_nr_characters %>%
+  filter(nr_characters <= 60) %>%
+  ggplot(aes(x = nr_characters, y = n)) +
+  geom_col(width = 1) +
+  facet_wrap(~collection, scales = "free_y") +
+  theme_hsci_discrete(base_family = "Arial") +
+  scale_y_continuous(labels = scales::comma_format()) +
   xlab("Number of characters") +
   ylab("Verses") +
-  labs(title="Number of characters in verse lines")
+  labs(title = "Number of characters in verse lines")
 ```
 
 ```{r}
-d_nr_characters %>% 
+d_nr_characters %>%
   group_by(collection) %>%
-  mutate(prop=n/sum(n)) %>%
+  mutate(prop = n / sum(n)) %>%
   ungroup() %>%
-  filter(nr_characters<=60) %>%
-  ggplot(aes(x=nr_characters,y=collection,fill=collection,height=prop)) +
-  geom_density_ridges(stat='identity') +
-  theme_hsci_discrete(base_family="Arial") +
-#  scale_y_continuous(labels=scales::percent_format()) +
+  filter(nr_characters <= 60) %>%
+  ggplot(aes(x = nr_characters, y = collection, fill = collection, height = prop)) +
+  geom_density_ridges(stat = "identity") +
+  theme_hsci_discrete(base_family = "Arial") +
+  #  scale_y_continuous(labels=scales::percent_format()) +
   xlab("Number of characters") +
   ylab("Verses") +
-  labs(title="Number of characters in verse lines")
+  labs(title = "Number of characters in verse lines")
 ```
 
 #### Verse lines with more than 60 characters
 
 ```{r}
-d_nr_characters %>% 
-  mutate(nl=if_else(nr_characters>60,n,0L)) %>%
+d_nr_characters %>%
+  mutate(nl = if_else(nr_characters > 60, n, 0L)) %>%
   group_by(collection) %>%
-  summarise(lines=sum(nl),proportion=sum(nl)/sum(n),.groups="drop") %>%
+  summarise(lines = sum(nl), proportion = sum(nl) / sum(n), .groups = "drop") %>%
   arrange(desc(lines)) %>%
   gt() %>%
-  tab_header(title="Verse lines with more than 60 characters") %>%
+  tab_header(title = "Verse lines with more than 60 characters") %>%
   fmt_integer(lines) %>%
   fmt_percent(proportion)
 ```
@@ -703,64 +702,64 @@ d_nr_characters %>%
 
 #### Verse line lengths in words
 ```{r}
-d_nr_words %>% 
-  filter(nr_words<=10) %>%
-  ggplot(aes(x=nr_words,y=n)) +
-  geom_col(width=1) +
-  facet_wrap(~collection,scales="free_y") +
-  scale_x_continuous(breaks=seq(0,10,by=2)) +
-  scale_y_continuous(labels=scales::comma_format()) +
-  theme_hsci_discrete(base_family="Arial") +
+d_nr_words %>%
+  filter(nr_words <= 10) %>%
+  ggplot(aes(x = nr_words, y = n)) +
+  geom_col(width = 1) +
+  facet_wrap(~collection, scales = "free_y") +
+  scale_x_continuous(breaks = seq(0, 10, by = 2)) +
+  scale_y_continuous(labels = scales::comma_format()) +
+  theme_hsci_discrete(base_family = "Arial") +
   xlab("Number of words") +
   ylab("Verses") +
-  labs(title="Number of words in verse lines")
+  labs(title = "Number of words in verse lines")
 ```
 
 ```{r}
-d_nr_words %>% 
-  filter(nr_words<=10) %>%
+d_nr_words %>%
+  filter(nr_words <= 10) %>%
   uncount(n) %>%
-  ggplot(aes(x=nr_words,y=collection,fill=collection)) +
-  stat_binline(binwidth=1) +
-  theme_hsci_discrete(base_family="Arial") +
-  scale_x_continuous(breaks=seq(0,10,by=2)) +
+  ggplot(aes(x = nr_words, y = collection, fill = collection)) +
+  stat_binline(binwidth = 1) +
+  theme_hsci_discrete(base_family = "Arial") +
+  scale_x_continuous(breaks = seq(0, 10, by = 2)) +
   xlab("Number of words") +
   ylab("Verses") +
-#  scale_y_continuous(labels=scales::percent_format()) +
-  labs(title="Number of words in verse lines")
+  #  scale_y_continuous(labels=scales::percent_format()) +
+  labs(title = "Number of words in verse lines")
 ```
 
 #### Verse lines with more than 10 words
 
 ```{r}
-d_nr_words %>% 
-  mutate(nl=if_else(nr_words>10,n,0L)) %>%
+d_nr_words %>%
+  mutate(nl = if_else(nr_words > 10, n, 0L)) %>%
   group_by(collection) %>%
-  summarise(lines=sum(nl),proportion=sum(nl)/sum(n),.groups="drop") %>%
+  summarise(lines = sum(nl), proportion = sum(nl) / sum(n), .groups = "drop") %>%
   arrange(desc(lines)) %>%
   gt() %>%
-  tab_header(title="Verse lines with more than 10 words") %>%
+  tab_header(title = "Verse lines with more than 10 words") %>%
   fmt_integer(lines) %>%
   fmt_percent(proportion)
 ```
 
 ```{r}
-verse_nr_words <- word_occ %>% 
+verse_nr_words <- word_occ %>%
   group_by(v_id) %>%
-  summarise(nr_words=max(pos)) %>%
-  compute_a(unique_indexes=list(c("v_id","nr_words")))
+  summarise(nr_words = max(pos)) %>%
+  compute_a(unique_indexes = list(c("v_id", "nr_words")))
 
 word_nr_characters <- words %>%
-  mutate(nr_characters=str_length(text)) %>%
-  select(w_id,nr_characters) %>%
-  compute_a(unique_indexes=list(c("w_id","nr_characters")))
+  mutate(nr_characters = str_length(text)) %>%
+  select(w_id, nr_characters) %>%
+  compute_a(unique_indexes = list(c("w_id", "nr_characters")))
 
 d <- word_occ %>%
   left_join(word_nr_characters) %>%
   left_join(verse_nr_words) %>%
-  left_join(verse_poem %>% select(-pos),by=c("v_id")) %>% 
-  left_join(poems) %>% 
-  count(collection,nr_words,pos,nr_characters) %>%
+  left_join(verse_poem %>% select(-pos), by = c("v_id")) %>%
+  left_join(poems) %>%
+  count(collection, nr_words, pos, nr_characters) %>%
   collect()
 ```
 
@@ -770,126 +769,126 @@ d <- word_occ %>%
 
 ```{r}
 d_nr_characters <- verses_cl %>%
-  mutate(nr_characters=str_length(text)) %>%
-  left_join(verse_poem) %>% 
-  left_join(p_loc) %>% 
-  left_join(locations) %>% 
-  left_join(locations,by=c("par_id"="loc_id")) %>% 
-  mutate(name=if_else(type.x=="county",name.x,name.y)) %>%
-  count(name,nr_characters) %>% 
+  mutate(nr_characters = str_length(text)) %>%
+  left_join(verse_poem) %>%
+  left_join(p_loc) %>%
+  left_join(locations) %>%
+  left_join(locations, by = c("par_id" = "loc_id")) %>%
+  mutate(name = if_else(type.x == "county", name.x, name.y)) %>%
+  count(name, nr_characters) %>%
   ungroup() %>%
-  arrange(name,desc(n)) %>%
+  arrange(name, desc(n)) %>%
   collect()
 
 d_nr_words <- word_occ %>%
   group_by(v_id) %>%
-  summarise(nr_words=max(pos),.groups="drop") %>%
+  summarise(nr_words = max(pos), .groups = "drop") %>%
   left_join(verse_poem) %>%
-  left_join(p_loc) %>% 
-  left_join(locations) %>% 
-  left_join(locations,by=c("par_id"="loc_id")) %>% 
-  mutate(name=if_else(type.x=="county",name.x,name.y)) %>%
-  count(name,nr_words) %>% 
+  left_join(p_loc) %>%
+  left_join(locations) %>%
+  left_join(locations, by = c("par_id" = "loc_id")) %>%
+  mutate(name = if_else(type.x == "county", name.x, name.y)) %>%
+  count(name, nr_words) %>%
   ungroup() %>%
-  arrange(name,desc(n)) %>%
+  arrange(name, desc(n)) %>%
   collect()
 ```
 
 #### Verse line lengths in characters
 
 ```{r}
-d_nr_characters %>% 
+d_nr_characters %>%
   group_by(name) %>%
-  mutate(prop=n/sum(n)) %>%
+  mutate(prop = n / sum(n)) %>%
   ungroup() %>%
-  filter(nr_characters<=40,name!="Ahvenanmaa") %>%
-  mutate(name=fct_reorder(name,prop,.fun=max)) %>%
-  ggplot(aes(x=nr_characters,y=name,height=prop)) +
-  geom_density_ridges(stat='identity') +
-  theme_hsci_discrete(base_family="Arial") +
-#  scale_y_continuous(labels=scales::percent_format()) +
+  filter(nr_characters <= 40, name != "Ahvenanmaa") %>%
+  mutate(name = fct_reorder(name, prop, .fun = max)) %>%
+  ggplot(aes(x = nr_characters, y = name, height = prop)) +
+  geom_density_ridges(stat = "identity") +
+  theme_hsci_discrete(base_family = "Arial") +
+  #  scale_y_continuous(labels=scales::percent_format()) +
   xlab("Number of characters") +
   ylab("Verses") +
-  labs(title="Number of characters in verse lines")
+  labs(title = "Number of characters in verse lines")
 ```
 
 #### Verse line lengths in words
 
 ```{r,fig.height=11}
-d_nr_words %>% 
-  filter(nr_words<8,name!="Ahvenanmaa") %>%
-  mutate(name=fct_reorder(name,n,.fun=max)) %>%
+d_nr_words %>%
+  filter(nr_words < 8, name != "Ahvenanmaa") %>%
+  mutate(name = fct_reorder(name, n, .fun = max)) %>%
   uncount(n) %>%
-  ggplot(aes(x=nr_words,y=name)) +
-  stat_binline(binwidth=1,scale=0.9) +
-  theme_hsci_discrete(base_family="Arial") +
-  scale_x_continuous(breaks=seq(0,10,by=2)) +
+  ggplot(aes(x = nr_words, y = name)) +
+  stat_binline(binwidth = 1, scale = 0.9) +
+  theme_hsci_discrete(base_family = "Arial") +
+  scale_x_continuous(breaks = seq(0, 10, by = 2)) +
   xlab("Number of words") +
   ylab("Verses") +
-#  scale_y_continuous(labels=scales::percent_format()) +
-  labs(title="Number of words in verse lines")
+  #  scale_y_continuous(labels=scales::percent_format()) +
+  labs(title = "Number of words in verse lines")
 ```
 
 ## Number of characters in words by their position
 
 ```{r}
-verse_nr_words <- word_occ %>% 
+verse_nr_words <- word_occ %>%
   group_by(v_id) %>%
-  summarise(nr_words=max(pos)) %>%
-  compute_a(unique_indexes=list(c("v_id","nr_words")))
+  summarise(nr_words = max(pos)) %>%
+  compute_a(unique_indexes = list(c("v_id", "nr_words")))
 
 word_nr_characters <- words %>%
-  mutate(nr_characters=str_length(text)) %>%
-  select(w_id,nr_characters) %>%
-  compute_a(unique_indexes=list(c("w_id","nr_characters")))
+  mutate(nr_characters = str_length(text)) %>%
+  select(w_id, nr_characters) %>%
+  compute_a(unique_indexes = list(c("w_id", "nr_characters")))
 
 d <- word_occ %>%
   left_join(word_nr_characters) %>%
   left_join(verse_nr_words) %>%
-  left_join(verse_poem %>% select(-pos),by=c("v_id")) %>% 
-  left_join(poems) %>% 
-  count(collection,nr_words,pos,nr_characters) %>%
+  left_join(verse_poem %>% select(-pos), by = c("v_id")) %>%
+  left_join(poems) %>%
+  count(collection, nr_words, pos, nr_characters) %>%
   collect()
 ```
 
 ```{r}
 d %>%
-  group_by(collection,nr_words,pos) %>%
-  mutate(prop=n/sum(n)) %>%
+  group_by(collection, nr_words, pos) %>%
+  mutate(prop = n / sum(n)) %>%
   ungroup() %>%
-  filter(nr_words>=2L,nr_words<=5L) %>%
-  mutate(nr_words=as_factor(nr_words),pos=as_factor(pos)) %>%
+  filter(nr_words >= 2L, nr_words <= 5L) %>%
+  mutate(nr_words = as_factor(nr_words), pos = as_factor(pos)) %>%
   uncount(n) %>%
-  ggplot(aes(x=nr_characters,y=nr_words,fill=pos)) +
-  stat_binline(binwidth=1) +
-  facet_grid(collection~pos,labeller = labeller(pos=label_both)) + 
+  ggplot(aes(x = nr_characters, y = nr_words, fill = pos)) +
+  stat_binline(binwidth = 1) +
+  facet_grid(collection ~ pos, labeller = labeller(pos = label_both)) +
   xlab("Number of characters in word") +
   ylab("Number of words in verse") +
   labs(
-    title="Number of characters in words by their position",
-    subtitle="According to length of verse and collection"
-    ) +
-  guides(fill="none") +
-  theme_hsci_discrete(base_family="Arial")
+    title = "Number of characters in words by their position",
+    subtitle = "According to length of verse and collection"
+  ) +
+  guides(fill = "none") +
+  theme_hsci_discrete(base_family = "Arial")
 ```
 
 ```{r}
 d %>%
-  group_by(collection,nr_words,pos) %>%
-  mutate(prop=n/sum(n)) %>%
+  group_by(collection, nr_words, pos) %>%
+  mutate(prop = n / sum(n)) %>%
   ungroup() %>%
-  filter(nr_words>=2L,nr_words<=5L) %>%
-  mutate(nr_words=as_factor(nr_words),pos=as_factor(pos)) %>%
+  filter(nr_words >= 2L, nr_words <= 5L) %>%
+  mutate(nr_words = as_factor(nr_words), pos = as_factor(pos)) %>%
   uncount(n) %>%
-  ggplot(aes(x=nr_characters,y=pos,fill=nr_words)) +
-  stat_binline(binwidth=1) +
-  facet_grid(collection~nr_words,labeller = labeller(nr_words=label_both)) + 
+  ggplot(aes(x = nr_characters, y = pos, fill = nr_words)) +
+  stat_binline(binwidth = 1) +
+  facet_grid(collection ~ nr_words, labeller = labeller(nr_words = label_both)) +
   xlab("Number of characters in word") +
   ylab("Position") +
   labs(
-    title="Number of characters in words by their position",
-    subtitle="According to length of verse and collection"
-    ) +
-  guides(fill="none") +
-  theme_hsci_discrete(base_family="Arial")
+    title = "Number of characters in words by their position",
+    subtitle = "According to length of verse and collection"
+  ) +
+  guides(fill = "none") +
+  theme_hsci_discrete(base_family = "Arial")
 ```
